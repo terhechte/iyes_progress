@@ -52,29 +52,29 @@ use bevy_ecs::schedule::StateData;
 
 #[cfg(feature = "assets")]
 mod asset;
-#[cfg(feature = "iyes_loopless")]
-mod loopless;
 #[cfg(not(feature = "iyes_loopless"))]
 mod legacy;
+#[cfg(feature = "iyes_loopless")]
+mod loopless;
 
 /// Most used imports
 pub mod prelude {
     #[cfg(feature = "assets")]
     pub use crate::asset::AssetsLoading;
-    pub use crate::Progress;
-    pub use crate::HiddenProgress;
-    pub use crate::ProgressCounter;
-    pub use crate::ProgressPlugin;
-    #[cfg(feature = "iyes_loopless")]
-    pub use crate::loopless::prelude::*;
     #[cfg(not(feature = "iyes_loopless"))]
     pub use crate::legacy::prelude::*;
+    #[cfg(feature = "iyes_loopless")]
+    pub use crate::loopless::prelude::*;
+    pub use crate::HiddenProgress;
+    pub use crate::Progress;
+    pub use crate::ProgressCounter;
+    pub use crate::ProgressPlugin;
 }
 
-#[cfg(feature = "iyes_loopless")]
-pub use crate::loopless::ProgressSystem;
 #[cfg(not(feature = "iyes_loopless"))]
 pub use crate::legacy::ProgressSystem;
+#[cfg(feature = "iyes_loopless")]
+pub use crate::loopless::ProgressSystem;
 
 /// Progress reported by a system
 ///
@@ -244,7 +244,7 @@ pub enum ProgressSystemLabel {
 ///
 /// This resource is automatically created when entering a state that was
 /// configured using [`ProgressPlugin`], and removed when exiting it.
-#[derive(Default)]
+#[derive(Default, Resource)]
 pub struct ProgressCounter {
     // use atomics to track overall progress,
     // so that we can avoid mut access in tracked systems,
@@ -291,10 +291,10 @@ impl ProgressCounter {
     /// use cases that must account for the "true" actual progress of the
     /// registered systems.
     pub fn progress_complete(&self) -> Progress {
-        let total = self.total.load(MemOrdering::Acquire)
-            + self.total_hidden.load(MemOrdering::Acquire);
-        let done = self.done.load(MemOrdering::Acquire)
-            + self.done_hidden.load(MemOrdering::Acquire);
+        let total =
+            self.total.load(MemOrdering::Acquire) + self.total_hidden.load(MemOrdering::Acquire);
+        let done =
+            self.done.load(MemOrdering::Acquire) + self.done_hidden.load(MemOrdering::Acquire);
 
         Progress { done, total }
     }
@@ -320,7 +320,8 @@ impl ProgressCounter {
     /// In most cases you do not want to call this function yourself.
     /// Let your systems return a [`Progress`] and wrap them in [`track`] instead.
     pub fn manually_track_hidden(&self, progress: HiddenProgress) {
-        self.total_hidden.fetch_add(progress.0.total, MemOrdering::Release);
+        self.total_hidden
+            .fetch_add(progress.0.total, MemOrdering::Release);
         // use `min` to clamp in case a bad user provides `done > total`
         self.done_hidden
             .fetch_add(progress.0.done.min(progress.0.total), MemOrdering::Release);
@@ -393,9 +394,7 @@ fn next_frame(world: &mut World) {
 /// Dummy system to count for a number of frames
 ///
 /// May be useful for testing/debug/workaround purposes.
-pub fn dummy_system_wait_frames<const N: u32>(
-    mut count: Local<u32>,
-) -> HiddenProgress {
+pub fn dummy_system_wait_frames<const N: u32>(mut count: Local<u32>) -> HiddenProgress {
     if *count <= N {
         *count += 1;
     }
@@ -411,9 +410,8 @@ pub fn dummy_system_wait_frames<const N: u32>(
 pub fn dummy_system_wait_millis<const MILLIS: u64>(
     mut state: Local<Option<std::time::Instant>>,
 ) -> HiddenProgress {
-    let end = state.unwrap_or_else(
-        || std::time::Instant::now() + std::time::Duration::from_millis(MILLIS)
-    );
+    let end = state
+        .unwrap_or_else(|| std::time::Instant::now() + std::time::Duration::from_millis(MILLIS));
     *state = Some(end);
     HiddenProgress((std::time::Instant::now() > end).into())
 }

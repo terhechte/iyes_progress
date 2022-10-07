@@ -2,9 +2,9 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::StateData;
 
-use crate::{ProgressPlugin, ProgressSystemLabel};
-use crate::ProgressCounter;
 use crate::ApplyProgress;
+use crate::ProgressCounter;
+use crate::{ProgressPlugin, ProgressSystemLabel};
 
 pub mod prelude {
     pub use super::ProgressSystem;
@@ -12,23 +12,25 @@ pub mod prelude {
 
 impl<S: StateData> Plugin for ProgressPlugin<S> {
     fn build(&self, app: &mut App) {
-        app.add_system_set(SystemSet::on_enter(self.state.clone()).with_system(crate::loadstate_enter));
+        app.add_system_set(
+            SystemSet::on_enter(self.state.clone()).with_system(crate::loadstate_enter),
+        );
         app.add_system_set(
             SystemSet::on_update(self.state.clone())
                 .with_system(
                     crate::next_frame
-                        .exclusive_system()
                         .at_start()
                         .label(ProgressSystemLabel::Preparation),
                 )
                 .with_system(
                     check_progress::<S>(self.next_state.clone())
-                        .exclusive_system()
                         .at_end()
                         .label(ProgressSystemLabel::CheckProgress),
                 ),
         );
-        app.add_system_set(SystemSet::on_exit(self.state.clone()).with_system(crate::loadstate_exit));
+        app.add_system_set(
+            SystemSet::on_exit(self.state.clone()).with_system(crate::loadstate_exit),
+        );
 
         #[cfg(feature = "assets")]
         if self.track_assets {
@@ -38,7 +40,8 @@ impl<S: StateData> Plugin for ProgressPlugin<S> {
                     .with_system(crate::asset::assets_progress.track_progress()),
             );
             app.add_system_set(
-                SystemSet::on_exit(self.state.clone()).with_system(crate::asset::assets_loading_reset),
+                SystemSet::on_exit(self.state.clone())
+                    .with_system(crate::asset::assets_loading_reset),
             );
         }
 
@@ -54,7 +57,7 @@ pub trait ProgressSystem<Params, T: ApplyProgress>: IntoSystem<(), T, Params> {
     /// Call this to add your system returning [`Progress`] to your [`App`]
     ///
     /// This adds the functionality for tracking the returned Progress.
-    fn track_progress(self) -> bevy_ecs::schedule::ParallelSystemDescriptor;
+    fn track_progress(self) -> bevy_ecs::schedule::SystemDescriptor;
 }
 
 impl<S, T, Params> ProgressSystem<Params, T> for S
@@ -62,12 +65,10 @@ where
     T: ApplyProgress + 'static,
     S: IntoSystem<(), T, Params>,
 {
-    fn track_progress(self) -> bevy_ecs::schedule::ParallelSystemDescriptor {
-        self.chain(
-            |In(progress): In<T>, counter: Res<ProgressCounter>| {
-                progress.apply_progress(&*counter);
-            },
-        )
+    fn track_progress(self) -> bevy_ecs::schedule::SystemDescriptor {
+        self.chain(|In(progress): In<T>, counter: Res<ProgressCounter>| {
+            progress.apply_progress(&*counter);
+        })
         .label(ProgressSystemLabel::Tracking)
     }
 }
