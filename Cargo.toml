@@ -14,8 +14,8 @@ bevy_app = { git = "https://github.com/bevyengine/bevy", branch = "main" }
 bevy_ecs = { git = "https://github.com/bevyengine/bevy", branch = "main" }
 #bevy_ecs = "0.8"
 #bevy_app = "0.8"
-bevy_asset = { version = "0.8", optional = true }
-bevy_utils = { version = "0.8", optional = true }
+bevy_asset = { git = "https://github.com/bevyengine/bevy", branch = "main", optional = true }
+bevy_utils = { git = "https://github.com/bevyengine/bevy", branch = "main", optional = true }
 
 [dependencies.iyes_loopless]
 version = "0.7"
