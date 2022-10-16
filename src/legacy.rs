@@ -66,7 +66,7 @@ where
     S: IntoSystem<(), T, Params>,
 {
     fn track_progress(self) -> bevy_ecs::schedule::SystemDescriptor {
-        self.chain(|In(progress): In<T>, counter: Res<ProgressCounter>| {
+        self.pipe(|In(progress): In<T>, counter: Res<ProgressCounter>| {
             progress.apply_progress(&*counter);
         })
         .label(ProgressSystemLabel::Tracking)
